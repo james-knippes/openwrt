@@ -7,6 +7,18 @@
 . /lib/functions/uci-defaults.sh
 . /lib/functions/system.sh
 
+ipq40xx_get_dt_mac_path() {
+        local mac_path
+        local ethpath
+        local basepath="/sys/firmware/devicetree/base"
+        local nodepath="$basepath/aliases/ethernet$1"
+
+        [ -f "$nodepath" ] && ethpath=$(cat "$nodepath")
+        [ -n "$ethpath" ] && mac_path="$basepath$ethpath/local-mac-address"
+
+        echo "$mac_path"
+}
+
 ipq40xx_setup_interfaces()
 {
 	local board="$1"
@@ -24,16 +36,14 @@ ipq40xx_setup_interfaces()
 		;;
 	asus,rt-ac58u|\
 	zyxel,nbg6617)
-		ucidef_set_interfaces_lan_wan "eth0" "eth1"
 		ucidef_add_switch "switch0" \
-			"0u@eth0" "1:lan:4" "2:lan:3" "3:lan:2" "4:lan:1"
+			"0@eth0" "1:lan:4" "2:lan:3" "3:lan:2" "4:lan:1" "5:wan"
 		;;
 	avm,fritzbox-4040|\
 	linksys,ea6350v3|\
 	linksys,ea8300)
-		ucidef_set_interfaces_lan_wan "eth0" "eth1"
 		ucidef_add_switch "switch0" \
-			"0u@eth0" "1:lan" "2:lan" "3:lan" "4:lan"
+			"0@eth0" "1:lan" "2:lan" "3:lan" "4:lan" "5:wan"
 		;;
 	avm,fritzbox-7530)
 		ucidef_add_switch "switch0" \
@@ -81,6 +91,10 @@ ipq40xx_setup_macs()
 	engenius,ens620ext)
 		wan_mac=$(mtd_get_mac_ascii u-boot-env ethaddr)
 		lan_mac=$(macaddr_add "$wan_mac" 1)
+		;;
+	avm,fritzbox-4040)
+                wan_mac=$(get_mac_binary $(ipq40xx_get_dt_mac_path 0) 0)
+                lan_mac=$(get_mac_binary $(ipq40xx_get_dt_mac_path 1) 0)
 		;;
 	linksys,ea6350v3)
 		wan_mac=$(mtd_get_mac_ascii devinfo hw_mac_addr)
